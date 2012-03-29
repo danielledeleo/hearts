@@ -6,7 +6,7 @@ var deck : array 1 .. 52 of int
 var player : array 1 .. 4 of array 1 .. 13 of int
 var played : array 1 .. 4 of int
 var selected : array 1 .. 13 of boolean := init(false,false,false,false,false,false,false,false,false,false,false,false,false)
-var chosen, maximum, count : int
+var chosen, maximum, count, tabsPicture : int
 var deck_picture_ids : array 1 .. 52 of int
 
 proc loadpictures(var a : array 1 .. * of int, path, extension : string)
@@ -129,7 +129,7 @@ proc displayhandpic(selected : array 1 .. 13 of boolean)
 	if selected(i) = true then
 	    shift := 24
 	end if
-	Pic.Draw(deck_picture_ids(player(1)(i)),0 + ((i-1) * 26),0 + shift,picCopy)
+	Pic.Draw(deck_picture_ids(player(1)(i)),142 + ((i-1) * 26),32 + shift,picCopy)
 	shift := 0
     end for
 end displayhandpic
@@ -145,7 +145,7 @@ end flip
 
 %------------------------------------ TESTS -----------------------------------
 randomize
-
+put maxx
 shuffle (deck)
 /*
 for i : 1 .. 52
@@ -169,6 +169,8 @@ maximum := 13
 count := 0
 
 displayhandpic(selected)
+
+tabsPicture := Pic.FileNew("cards/tabs.jpg")
 loop
     Input.Pause
     chosen := choosecard
@@ -182,6 +184,8 @@ loop
     end if
     cls
     displayhandpic(selected)
+    locate(24,20)
+    Pic.Draw(tabsPicture,142,0,picCopy)
 end loop
 
 
