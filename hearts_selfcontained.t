@@ -1,7 +1,4 @@
-import Textdeck
-
 setscreen("nocursor")
-
 var deck : array 1 .. 52 of int
 var player : array 1 .. 4 of array 1 .. 13 of int
 var played : array 1 .. 4 of int
@@ -17,11 +14,51 @@ end loadpictures
 
 loadpictures(deck_picture_ids, "cards/jpg/", ".jpg")         % loads card pictures
 
+const suits : array 1 .. 4 of string := init ("C", "D", "S", "H") % clubs, diamonds, spades, hearts
+const ranks : array 1 .. 13 of int := init (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13) % 2, 3, 4, 5, 6, 7, 8, 9, 10, Jack, Queen, King, Ace
 
 for i : 1 .. 52         % init deck
     deck (i) := i
 end for
 
+function suit (x : int) : string     % determines suit based on card number (1 to 52) example:  card 40 (2 of hearts) 
+    var suitno : int                                                                        % = floor([40 - 1] / 13) + 1
+    suitno := (x - 1) div 13 + 1                                                            % = 3 + 1
+    result suits (suitno)                                                                   % suit 4 is hearts, according to constant array, "suits"
+end suit
+
+function rank (x : int) : string
+    var rankno : int
+    rankno := (x - 1) mod 13 + 1
+    for i : 1 .. 8
+	if rankno = i then
+	    result intstr (rankno + 1)
+	end if
+    end for
+    if rankno = 9 then
+	result "T"
+    elsif rankno = 10 then
+	result "J"
+    elsif rankno = 11 then
+	result "Q"
+    elsif rankno = 12 then
+	result "K"
+    elsif rankno = 13 then
+	result "A"
+    end if
+end rank
+
+function whatcard (x : int) : string
+    result rank (x) + suit (x)
+end whatcard
+
+function suitnum (x : int) : int
+    result (x - 1) div 13 + 1
+end suitnum
+
+function ranknum (x : int) : int
+    result (x - 1) mod 13 + 1
+end ranknum
 
 proc shuffle (var a : array 1 .. * of int)
     var selected, temp : int
@@ -101,7 +138,7 @@ proc displayhand(selected : array 1 .. 13 of boolean)
     var info_row, selection_row : string := ""
 
     for j : 1 .. upper(player(1))
-	info_row := info_row + "| " + Textdeck.whatcard(player(1)(j))
+	info_row := info_row + "| " + whatcard(player(1)(j))
     end for
     info_row := info_row + "|"
     
@@ -158,7 +195,7 @@ deal
 for f : 1 .. 4
     sort (player (f))
     for i : 1 .. 13
-	put Textdeck.whatcard (player (f) (i)), " " ..
+	put whatcard (player (f) (i)), " " ..
     end for
     put "\n"
 end for
