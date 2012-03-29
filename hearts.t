@@ -132,8 +132,11 @@ proc displayhandpic (selected : array 1 .. 13 of boolean)
 	if selected (i) = true then
 	    shift := 24
 	end if
-	Pic.Draw (deck_picture_ids (player (1) (i)), 142 + ((i - 1) * 26), 32 + shift, picCopy)
-	shift := 0
+	
+	if player (1) (i) not = 0 then
+	    Pic.Draw (deck_picture_ids (player (1) (i)), 142 + ((i - 1) * 26), 32 + shift, picCopy)
+	    shift := 0
+	end if
     end for
 end displayhandpic
 
@@ -145,19 +148,35 @@ proc flip (var x : boolean)
     end if
 end flip
 
+proc swap(var a, b: int)
+    var temp : int
+    
+    temp := b
+    b := a
+    a := temp
+end swap
+
+proc playcard(card_position, player_id : int, var a : array 1 .. 4 of int)
+    a(player_id) := player(player_id)(card_position)
+    player(player_id)(card_position) := 0
+    
+    for i : card_position .. 12
+	if player(player_id)(i) = 0 then
+	    swap(player(player_id)(i),player(player_id)(i+1))
+	end if
+    end for
+end playcard
 
 %------------------------------------ TESTS -----------------------------------
-randomize
-put maxx
-shuffle (deck)
+%randomize
 /*
  for i : 1 .. 52
  put rank (deck (i)) ..
  put suit (deck (i)) ..
  put " " ..
  end for
- */
-deal
+
+
 for f : 1 .. 4
     sort (player (f))
     for i : 1 .. 13
@@ -165,8 +184,15 @@ for f : 1 .. 4
     end for
     put "\n"
 end for
-
+ */
+ 
 %---------------------------------- THE GAME ---------------------------------
+shuffle (deck)
+deal
+
+for i : 1 .. 4          %sorts each player's hand by suit
+    sort (player (i))
+end for
 
 maximum := 1
 count := 0
@@ -175,13 +201,11 @@ displayhandpic (selected)
 
 tabsPicture := Pic.FileNew ("cards/tabs.jpg")
 loop
-    locate (1, 1)
-    put turn
     Input.Pause
     chosen := choose
+    
 
-    if chosen not= 0 then
-
+    if chosen not = 0 and player(1)(chosen) not = 0 then
 	if maximum = 1 then                          % when maximum = 1, which is normal play (without swapping 3 cards)
 	    if count = 1 then                        % if a card is already selected, it swaps the selected card to that position.
 		for i : 1 .. 13
@@ -211,16 +235,19 @@ loop
 	turn += 1
 	for i : 1 .. 13
 	    if selected(i) = true then
-		played(1) := player(1)(i)
+		playcard(i, 1, played)
 	    end if
 	    selected (i) := false
 	end for
+	count := 0
     elsif count = 3 and chosen = 0 then
 	 
 	
     end if
 
     displayhandpic (selected)
+    
+    
     Pic.Draw (tabsPicture, 142, 0, picCopy)
 end loop
 
