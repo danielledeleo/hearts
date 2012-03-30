@@ -1,14 +1,15 @@
 import Textdeck
-
 setscreen ("nocursor")
 
 var deck : array 1 .. 52 of int
 var player : array 1 .. 4 of array 1 .. 13 of int
 var played : array 1 .. 4 of int
 var selected : array 1 .. 13 of boolean := init (false, false, false, false, false, false, false, false, false, false, false, false, false)
-var chosen, maximum, count, tabsPicture : int
+var chosen, maximum, count : int
 var deck_picture_ids : array 1 .. 52 of int
 var turn : int := 1
+
+var sidecard, upcard, tabsPicture : int % card images for EAST, NORTH, and WEST players as well as key correlation tabs   
 
 proc loadpictures (var a : array 1 .. * of int, path, extension : string)
     for i : 1 .. upper (a)
@@ -16,7 +17,10 @@ proc loadpictures (var a : array 1 .. * of int, path, extension : string)
     end for
 end loadpictures
 
-loadpictures (deck_picture_ids, "cards/jpg/", ".jpg")        % loads card pictures
+upcard := Pic.FileNew("cards/jpg/blankup.jpg")
+sidecard := Pic.FileNew("cards/jpg/blanksideways.jpg")
+
+loadpictures (deck_picture_ids, "cards/jpg/", ".jpg")        % loads 1..52 card pictures
 
 
 for i : 1 .. 52         % init deck
@@ -45,7 +49,7 @@ proc deal
     end for
 end deal
 
-proc sort (var a : array 1 .. * of int)
+proc sort (var a : array 1 .. * of int)  % bubble sorts any array of integers
     var tf : boolean
     var temp : int
     loop
@@ -99,8 +103,7 @@ function choose : int
 end choose
 
 
-
-proc displayhand (selected : array 1 .. 13 of boolean)
+proc displayhand (selected : array 1 .. 13 of boolean)    % old text-based display version
     var info_row, selection_row : string := ""
 
     for j : 1 .. upper (player (1))
@@ -137,10 +140,11 @@ proc displayhandpic (selected : array 1 .. 13 of boolean)
 	    Pic.Draw (deck_picture_ids (player (1) (i)), 142 + ((i - 1) * 26), 32 + shift, picCopy)
 	    shift := 0
 	end if
+	Pic.Draw(sidecard,-32, 100 + ((i - 1) * 16),picCopy)
     end for
 end displayhandpic
 
-proc flip (var x : boolean)
+proc flip (var x : boolean)  % flips any boolean
     if x = true then
 	x := false
     elsif x = false then
@@ -148,7 +152,7 @@ proc flip (var x : boolean)
     end if
 end flip
 
-proc swap(var a, b: int)
+proc swap(var a, b: int)  % swaps two integers in an array
     var temp : int
     
     temp := b
@@ -156,11 +160,11 @@ proc swap(var a, b: int)
     a := temp
 end swap
 
-proc playcard(card_position, player_id : int, var a : array 1 .. 4 of int)
-    a(player_id) := player(player_id)(card_position)
-    player(player_id)(card_position) := 0
+proc playcard(card_position, player_id : int, var a : array 1 .. 4 of int) % puts a player's card in its respective
+    a(player_id) := player(player_id)(card_position)                       % spot in the 'played' array. this  is later
+    player(player_id)(card_position) := 0                                  % displayed in the middle of the display.
     
-    for i : card_position .. 12
+    for i : card_position .. 12                  % slides cards to left of hand after a card has played
 	if player(player_id)(i) = 0 then
 	    swap(player(player_id)(i),player(player_id)(i+1))
 	end if
