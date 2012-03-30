@@ -9,10 +9,9 @@ var chosen, maximum, count : int
 var deck_picture_ids : array 1 .. 52 of int
 var turn : int := 1
 var match : int := 0
-var runWindow, debugWindow : int
-debugWindow := Window.Open ("position:left;top;text:20;60")
-runWindow := Window.Open ("position:right;top;nocursor,offscreenonly,graphics:640;400")
+var winner : int := 1
 
+var playable : array 1 .. 13 of boolean := init (false, false, false, false, false, false, false, false, false, false, false, false, false)
 
 var sidecard, upcard, tabsPicture : int % card images for EAST, NORTH, and WEST players as well as key correlation tabs
 
@@ -151,12 +150,12 @@ proc displayhandpic (selected : array 1 .. 13 of boolean)
 	    Pic.Draw (sidecard, -32, 100 + ((i - 1) * 16), picCopy)                                         % displays west's hand
 	    shift := 0
 	end if
-	
+
 	if player (3) (i) not= 0 then
 	    Pic.Draw (upcard, 142 + ((i - 1) * 26), 370, picCopy)                                           % displays north's hand
 	    shift := 0
 	end if
-	
+
 	if player (4) (i) not= 0 then
 	    Pic.Draw (sidecard, 607, 100 + ((i - 1) * 16), picCopy)                                         % displays east's hand
 	    shift := 0
@@ -245,6 +244,41 @@ proc render
     View.Update
 end render
 
+proc ai
+    var high, low : int
+    var hasplayable : boolean := false
+
+    for i : 1 .. 14 - match
+	if Textdeck.suitnum(player(turn)(i)) = Textdeck.suitnum(played(winner)) then
+	    playable (i) := true
+	    hasplayable := true
+	end if
+    end for
+
+    if hasplayable then
+	for i : 1 .. 14 - match
+	    if playable (i) = true then
+		low := i
+		exit
+	    end if
+	end for
+	for i : low .. 14 - match
+	    if playable (i) = false then
+		high := i - 1
+		exit
+	    else
+		high := i
+	    end if
+	end for
+	playcard (Rand.Int (low, high), turn, played)
+    else
+	playcard (Rand.Int (1, 14 - match), turn, played)
+    end if
+    for i : 1..13
+	playable(i) := false
+    end for
+end ai
+
 %------------------------------------ TESTS -----------------------------------
 %randomize
 /*
@@ -283,6 +317,9 @@ loop
 	turn := 1
 
 	loop
+	    for i : 1 .. 4
+		played(i) := 0
+	    end for
 	    Input.Pause
 	    chosen := choose
 	    cls
@@ -300,7 +337,7 @@ loop
 		count := 0
 		exit
 	    elsif count = 3 and chosen = 0 then
-		
+
 	    end if
 	    render
 	end loop
@@ -308,16 +345,18 @@ loop
 	match += 1
     else
 	delay (300)
-	playcard (Rand.Int (1, 13 - match), turn, played)
+
+	ai  % not very smart
+
 	cls
 	render
 	turn := turn + 1
     end if
     cls
-    if match = 13 then
+    render
+    if match = 13 and turn = 5 then
 	exit
     end if
-    render
 end loop
 
 
