@@ -1,15 +1,20 @@
 import Textdeck
-setscreen ("nocursor")
+setscreen ("nocursor,offscreenonly")
 
 var deck : array 1 .. 52 of int
 var player : array 1 .. 4 of array 1 .. 13 of int
-var played : array 1 .. 4 of int
+var played : array 1 .. 4 of int := init (0, 0, 0, 0)
 var selected : array 1 .. 13 of boolean := init (false, false, false, false, false, false, false, false, false, false, false, false, false)
 var chosen, maximum, count : int
 var deck_picture_ids : array 1 .. 52 of int
 var turn : int := 1
+var match : int := 0
+var runWindow, debugWindow : int
+debugWindow := Window.Open ("position:left;top;text:20;60")
+runWindow := Window.Open ("position:right;top;nocursor,offscreenonly,graphics:640;400")
 
-var sidecard, upcard, tabsPicture : int % card images for EAST, NORTH, and WEST players as well as key correlation tabs   
+
+var sidecard, upcard, tabsPicture : int % card images for EAST, NORTH, and WEST players as well as key correlation tabs
 
 proc loadpictures (var a : array 1 .. * of int, path, extension : string)
     for i : 1 .. upper (a)
@@ -17,9 +22,9 @@ proc loadpictures (var a : array 1 .. * of int, path, extension : string)
     end for
 end loadpictures
 
-upcard := Pic.FileNew("cards/jpg/blankup.jpg")
-sidecard := Pic.FileNew("cards/jpg/blanksideways.jpg")
-
+upcard := Pic.FileNew ("cards/jpg/blankup.jpg")
+sidecard := Pic.FileNew ("cards/jpg/blanksideways.jpg")
+tabsPicture := Pic.FileNew ("cards/tabs.jpg")
 loadpictures (deck_picture_ids, "cards/jpg/", ".jpg")        % loads 1..52 card pictures
 
 
@@ -135,13 +140,31 @@ proc displayhandpic (selected : array 1 .. 13 of boolean)
 	if selected (i) = true then
 	    shift := 24
 	end if
-	
-	if player (1) (i) not = 0 then
-	    Pic.Draw (deck_picture_ids (player (1) (i)), 142 + ((i - 1) * 26), 32 + shift, picCopy)
+
+
+	if player (1) (i) not= 0 then % checks for filler card
+	    Pic.Draw (deck_picture_ids (player (1) (i)), 142 + ((i - 1) * 26), 32 + shift, picCopy)         % displays player hand
 	    shift := 0
 	end if
-	Pic.Draw(sidecard,-32, 100 + ((i - 1) * 16),picCopy)
+
+	if player (2) (i) not= 0 then
+	    Pic.Draw (sidecard, -32, 100 + ((i - 1) * 16), picCopy)                                         % displays west's hand
+	    shift := 0
+	end if
+	
+	if player (3) (i) not= 0 then
+	    Pic.Draw (upcard, 142 + ((i - 1) * 26), 370, picCopy)                                           % displays north's hand
+	    shift := 0
+	end if
+	
+	if player (4) (i) not= 0 then
+	    Pic.Draw (sidecard, 607, 100 + ((i - 1) * 16), picCopy)                                         % displays east's hand
+	    shift := 0
+	end if
     end for
+
+    Pic.Draw (tabsPicture, 142, 0, picCopy)
+
 end displayhandpic
 
 proc flip (var x : boolean)  % flips any boolean
@@ -152,64 +175,27 @@ proc flip (var x : boolean)  % flips any boolean
     end if
 end flip
 
-proc swap(var a, b: int)  % swaps two integers in an array
+proc swap (var a, b : int) % swaps two integers in an array
     var temp : int
-    
+
     temp := b
     b := a
     a := temp
 end swap
 
-proc playcard(card_position, player_id : int, var a : array 1 .. 4 of int) % puts a player's card in its respective
-    a(player_id) := player(player_id)(card_position)                       % spot in the 'played' array. this  is later
-    player(player_id)(card_position) := 0                                  % displayed in the middle of the display.
-    
+proc playcard (card_position, player_id : int, var a : array 1 .. 4 of int) % puts a player's card in its respective
+    a (player_id) := player (player_id) (card_position)                     % spot in the 'played' array. this  is later
+    player (player_id) (card_position) := 0                                 % displayed in the middle of the display.
+
     for i : card_position .. 12                  % slides cards to left of hand after a card has played
-	if player(player_id)(i) = 0 then
-	    swap(player(player_id)(i),player(player_id)(i+1))
+	if player (player_id) (i) = 0 then
+	    swap (player (player_id) (i), player (player_id) (i + 1))
 	end if
     end for
 end playcard
 
-%------------------------------------ TESTS -----------------------------------
-%randomize
-/*
- for i : 1 .. 52
- put rank (deck (i)) ..
- put suit (deck (i)) ..
- put " " ..
- end for
-
-
-for f : 1 .. 4
-    sort (player (f))
-    for i : 1 .. 13
-	put Textdeck.whatcard (player (f) (i)), " " ..
-    end for
-    put "\n"
-end for
- */
- 
-%---------------------------------- THE GAME ---------------------------------
-shuffle (deck)
-deal
-
-for i : 1 .. 4          %sorts each player's hand by suit
-    sort (player (i))
-end for
-
-maximum := 1
-count := 0
-
-displayhandpic (selected)
-
-tabsPicture := Pic.FileNew ("cards/tabs.jpg")
-loop
-    Input.Pause
-    chosen := choose
-    
-
-    if chosen not = 0 and player(1)(chosen) not = 0 then
+proc checkcount (maximum : int, var count : int)
+    if chosen not= 0 and player (1) (chosen) not= 0 then
 	if maximum = 1 then                          % when maximum = 1, which is normal play (without swapping 3 cards)
 	    if count = 1 then                        % if a card is already selected, it swaps the selected card to that position.
 		for i : 1 .. 13
@@ -233,26 +219,105 @@ loop
 	    end if
 	end if
     end if
-    cls
+end checkcount
 
-    if count = 1 and chosen = 0 then           %
-	turn += 1
-	for i : 1 .. 13
-	    if selected(i) = true then
-		playcard(i, 1, played)
-	    end if
-	    selected (i) := false
-	end for
-	count := 0
-    elsif count = 3 and chosen = 0 then
-	 
-	
+proc displayboard (a : array 1 .. 4 of int)
+    if a (1) not= 0 then
+	Pic.Draw (deck_picture_ids (a (1)), 298, 140, picCopy)
     end if
 
+    if a (2) not= 0 then
+	Pic.Draw (deck_picture_ids (a (2)), 208, 204, picCopy)
+    end if
+
+    if a (3) not= 0 then
+	Pic.Draw (deck_picture_ids (a (3)), 298, 268, picCopy)
+    end if
+
+    if a (4) not= 0 then
+	Pic.Draw (deck_picture_ids (a (4)), 388, 204, picCopy)
+    end if
+end displayboard
+
+proc render
     displayhandpic (selected)
-    
-    
-    Pic.Draw (tabsPicture, 142, 0, picCopy)
+    displayboard (played)
+    View.Update
+end render
+
+%------------------------------------ TESTS -----------------------------------
+%randomize
+/*
+ for i : 1 .. 52
+ put rank (deck (i)) ..
+ put suit (deck (i)) ..
+ put " " ..
+ end for
+
+
+ for f : 1 .. 4
+ sort (player (f))
+ for i : 1 .. 13
+ put Textdeck.whatcard (player (f) (i)), " " ..
+ end for
+ put "\n"
+ end for
+ */
+
+%---------------------------------- THE GAME ---------------------------------
+shuffle (deck)
+deal
+
+for i : 1 .. 4          %sorts each player's hand by suit
+    sort (player (i))
+end for
+
+maximum := 1
+count := 0
+turn := 1
+
+displayhandpic (selected)
+render
+loop
+    if turn = 5 or turn = 1 then
+	turn := 1
+
+	loop
+	    Input.Pause
+	    chosen := choose
+	    cls
+	    checkcount (1, count)
+
+
+	    if count = 1 and chosen = 0 then   %
+		turn += 1
+		for i : 1 .. 13
+		    if selected (i) = true then
+			playcard (i, 1, played)
+		    end if
+		    selected (i) := false
+		end for
+		count := 0
+		exit
+	    elsif count = 3 and chosen = 0 then
+		
+	    end if
+	    render
+	end loop
+
+	match += 1
+    else
+	delay (300)
+	playcard (Rand.Int (1, 13 - match), turn, played)
+	cls
+	render
+	turn := turn + 1
+    end if
+    cls
+    if match = 13 then
+	exit
+    end if
+    render
 end loop
 
 
