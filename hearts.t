@@ -10,6 +10,8 @@ var deck_picture_ids : array 1 .. 52 of int
 var turn : int := 1
 var match : int := 0
 var winner : int := 1
+var broken_hearts : boolean := false
+
 
 var playable : array 1 .. 13 of boolean := init (false, false, false, false, false, false, false, false, false, false, false, false, false)
 
@@ -244,102 +246,140 @@ proc render
     View.Update
 end render
 
-proc ai(a_player : int)
+proc ai (a_player : int)
     var high, low : int
     var hasplayable : boolean := false
 
-    for i : 1 .. 14 - match
-	if Textdeck.suitnum (player (a_player) (i)) = Textdeck.suitnum(played(leader)) then
-	    playable (i) := true
-	    hasplayable := true
-	end if
-    end for
-
-    if hasplayable then
+    if leader not= a_player then
 	for i : 1 .. 14 - match
-	    if playable (i) = true then
-		low := i
-		exit
+	    if Textdeck.suitnum (player (a_player) (i)) = Textdeck.suitnum (played (leader)) then
+		playable (i) := true
+		hasplayable := true
+	    end if
+	    
+	    if not broken_hearts then
+		
 	    end if
 	end for
-	for i : low .. 14 - match
-	    if playable (i) = false then
-		high := i - 1
-		exit
-	    else
-		high := i
-	    end if
+	
+	if hasplayable then
+	    for i : 1 .. 14 - match
+		if playable (i) = true then
+		    low := i
+		    exit
+		end if
+	    end for
+	    for i : low .. 14 - match
+		if playable (i) = false then
+		    high := i - 1
+		    exit
+		else
+		    high := i
+		end if
+	    end for
+	    playcard (Rand.Int (low, high), a_player, played)
+	else
+	    playcard (Rand.Int (1, 14 - match), a_player, played)
+	end if
+
+	for i : 1 .. 13
+	    playable (i) := false
 	end for
-	playcard (Rand.Int (low, high), a_player, played)
+	
+    elsif match = 1 and leader = a_player then
+	playcard (1, a_player, played)
     else
 	playcard (Rand.Int (1, 14 - match), a_player, played)
     end if
-    
-    for i : 1 .. 13
-	playable (i) := false
-    end for
 end ai
+
+proc playerpick
+    loop
+	Input.Pause
+	chosen := choose
+	cls
+	checkcount (1, count)
+
+	if count = 1 and chosen = 0 then       %
+	    for i : 1 .. 13
+		if selected (i) = true then
+		    playcard (i, 1, played)
+		end if
+		selected (i) := false
+	    end for
+	    count := 0
+	    exit
+	elsif count = 3 and chosen = 0 then
+
+	end if
+	render
+    end loop
+
+    if match not= 13 then
+	match += 1
+    end if
+end playerpick
 
 function locatecard (cardnumber : int) : int %returns what player has a specific card, such as the 2 of clubs
     var depth_of_search : int
-    
+
     if cardnumber < 13 then % nice little trick to optimize looking for clubs
 	depth_of_search := cardnumber
     else
 	depth_of_search := 13
     end if
-    
+
     for i : 1 .. 4
 	for j : 1 .. depth_of_search
-	    if player(i)(j) = cardnumber then
+	    if player (i) (j) = cardnumber then
 		result i
 	    end if
 	end for
     end for
 end locatecard
 
-function determine_winner(lead : int) : int
-    var leadingsuit : int := Textdeck.suitnum(lead)
+function determine_winner (lead : int) : int
+    var leadingsuit : int := Textdeck.suitnum (lead)
     var winningcard : int := lead
     var newwinner : int
-    
-    for i : 1 .. 4 
-	if Textdeck.suitnum(played(i)) = leadingsuit and played(i) >= winningcard then
-	    winningcard := played(i)
+
+    for i : 1 .. 4
+	if Textdeck.suitnum (played (i)) = leadingsuit and played (i) >= winningcard then
+	    winningcard := played (i)
 	    newwinner := i
 	end if
     end for
-    
+
     result newwinner
 end determine_winner
 
-function isfull(a : array 1 .. * of int, highrange : int) : boolean % takes in an array of ints and returns true if 1 to highrange aren't zero
+function isfull (a : array 1 .. * of int, highrange : int) : boolean % takes in an array of ints and returns true if 1 to highrange aren't zero
     var haszero : boolean := false
     for i : 1 .. highrange
-	if a(i) = 0 then
+	if a (i) = 0 then
 	    haszero := true
 	end if
     end for
-    flip(haszero)
+    flip (haszero)
     result haszero
 end isfull
 
-function isempty(a : array 1 .. * of int, highrange : int) : boolean
+function isempty (a : array 1 .. * of int, highrange : int) : boolean
     var hasnozero : boolean := false
     for i : 1 .. highrange
-	if a(i) not = 0 then
+	if a (i) not= 0 then
 	    hasnozero := true
 	end if
     end for
-    flip(hasnozero)
-    result hasnozero    
+    flip (hasnozero)
+    result hasnozero
 end isempty
 
-function initialized_elements (a : array 1 .. * of int, highrange : int) : int  % like isfull and isempty, but returns number of 
-    
+function initialized_elements (a : array 1 .. * of int, highrange : int) : int  % like isfull and isempty, but returns number of
+
 end initialized_elements
 
-proc advance(var turn : int)
+proc advance (var turn : int)
     if turn = 4 then
 	turn := 1
     else
@@ -366,9 +406,6 @@ end advance
  */
 
 %---------------------------------- THE GAME ---------------------------------
-
-var cardsplayed : int := 0
-
 shuffle (deck)
 deal
 
@@ -377,70 +414,37 @@ for i : 1 .. 4          %sorts each player's hand by suit
 end for
 
 maximum := 1
+match := 1
 count := 0
-leader := locatecard(1)
 
+leader := locatecard (1)
 turn := leader
-
-displayhandpic (selected)
-
-match += 1
-
 render
+
 loop
-
     if turn = 1 then
-	loop
-	    Input.Pause
-	    chosen := choose
-	    cls
-	    checkcount (1, count)
-
-
-	    if count = 1 and chosen = 0 then   %
-		turn += 1
-		for i : 1 .. 13
-		    if selected (i) = true then
-			playcard (i, 1, played)
-			cardsplayed += 1
-		    end if
-		    selected (i) := false
-		end for
-		count := 0
-		exit
-	    elsif count = 3 and chosen = 0 then
-
-	    end if
-	    render
-	end loop
-	
-	if match not = 13 then
-	    match += 1
-	end if
-    elsif turn = 3 then
-	cls
-	put "wtf"
-	exit
+	render
+	playerpick
     else
 	delay (600)
-	ai(turn)  % not very smart
+	ai (turn) % not very smart
 	cls
 	render
     end if
     cls
     render
-    advance(turn)
-    
-    if isfull(played,4) = true then
-	leader := determine_winner(played(leader))
+    advance (turn)
+
+    if isfull (played, 4) = true then
+	leader := determine_winner (played (leader))
 	turn := leader
 	for i : 1 .. 4
-	    played(i) := 0
+	    played (i) := 0
 	end for
     end if
 
-    if isempty(player(1),1) and isempty(player(2),1) and isempty(player(3),1) and isempty(player(4),1) then
-	    exit
+    if isempty (player (1), 1) and isempty (player (2), 1) and isempty (player (3), 1) and isempty (player (4), 1) then
+	exit
     end if
 end loop
 
