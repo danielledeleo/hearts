@@ -1,0 +1,9 @@
+Harry:
+  Breaking hearts
+  Score
+  Passing
+  Player card checking
+    Separate code from AI, and implement in both playerpick and AI
+Jagger:
+  Fully document code
+  Add card back design

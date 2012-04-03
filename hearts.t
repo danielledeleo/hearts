@@ -417,7 +417,7 @@ maximum := 1
 match := 1
 count := 0
 
-leader := locatecard (1)
+leader := locatecard(1)
 turn := leader
 render
 
@@ -427,7 +427,7 @@ loop
 	playerpick
     else
 	delay (600)
-	ai (turn) % not very smart
+	ai (turn) % not very smart, but getting better.
 	cls
 	render
     end if
