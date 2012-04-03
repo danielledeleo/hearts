@@ -5,7 +5,7 @@ var deck : array 1 .. 52 of int
 var player : array 1 .. 4 of array 1 .. 13 of int
 var played : array 1 .. 4 of int := init (0, 0, 0, 0)
 var selected : array 1 .. 13 of boolean := init (false, false, false, false, false, false, false, false, false, false, false, false, false)
-var chosen, maximum, count : int
+var chosen, maximum, count, leader : int
 var deck_picture_ids : array 1 .. 52 of int
 var turn : int := 1
 var match : int := 0
@@ -244,12 +244,12 @@ proc render
     View.Update
 end render
 
-proc ai
+proc ai(a_player : int)
     var high, low : int
     var hasplayable : boolean := false
 
     for i : 1 .. 14 - match
-	if Textdeck.suitnum(player(turn)(i)) = Textdeck.suitnum(played(winner)) then
+	if Textdeck.suitnum (player (a_player) (i)) = Textdeck.suitnum(played(leader)) then
 	    playable (i) := true
 	    hasplayable := true
 	end if
@@ -270,15 +270,82 @@ proc ai
 		high := i
 	    end if
 	end for
-	playcard (Rand.Int (low, high), turn, played)
+	playcard (Rand.Int (low, high), a_player, played)
     else
-	playcard (Rand.Int (1, 14 - match), turn, played)
+	playcard (Rand.Int (1, 14 - match), a_player, played)
     end if
-    for i : 1..13
-	playable(i) := false
+    
+    for i : 1 .. 13
+	playable (i) := false
     end for
 end ai
 
+function locatecard (cardnumber : int) : int %returns what player has a specific card, such as the 2 of clubs
+    var depth_of_search : int
+    
+    if cardnumber < 13 then % nice little trick to optimize looking for clubs
+	depth_of_search := cardnumber
+    else
+	depth_of_search := 13
+    end if
+    
+    for i : 1 .. 4
+	for j : 1 .. depth_of_search
+	    if player(i)(j) = cardnumber then
+		result i
+	    end if
+	end for
+    end for
+end locatecard
+
+function determine_winner(lead : int) : int
+    var leadingsuit : int := Textdeck.suitnum(lead)
+    var winningcard : int := lead
+    var newwinner : int
+    
+    for i : 1 .. 4 
+	if Textdeck.suitnum(played(i)) = leadingsuit and played(i) >= winningcard then
+	    winningcard := played(i)
+	    newwinner := i
+	end if
+    end for
+    
+    result newwinner
+end determine_winner
+
+function isfull(a : array 1 .. * of int, highrange : int) : boolean % takes in an array of ints and returns true if 1 to highrange aren't zero
+    var haszero : boolean := false
+    for i : 1 .. highrange
+	if a(i) = 0 then
+	    haszero := true
+	end if
+    end for
+    flip(haszero)
+    result haszero
+end isfull
+
+function isempty(a : array 1 .. * of int, highrange : int) : boolean
+    var hasnozero : boolean := false
+    for i : 1 .. highrange
+	if a(i) not = 0 then
+	    hasnozero := true
+	end if
+    end for
+    flip(hasnozero)
+    result hasnozero    
+end isempty
+
+function initialized_elements (a : array 1 .. * of int, highrange : int) : int  % like isfull and isempty, but returns number of 
+    
+end initialized_elements
+
+proc advance(var turn : int)
+    if turn = 4 then
+	turn := 1
+    else
+	turn := turn + 1
+    end if
+end advance
 %------------------------------------ TESTS -----------------------------------
 %randomize
 /*
@@ -299,6 +366,9 @@ end ai
  */
 
 %---------------------------------- THE GAME ---------------------------------
+
+var cardsplayed : int := 0
+
 shuffle (deck)
 deal
 
@@ -308,18 +378,19 @@ end for
 
 maximum := 1
 count := 0
-turn := 1
+leader := locatecard(1)
+
+turn := leader
 
 displayhandpic (selected)
+
+match += 1
+
 render
 loop
-    if turn = 5 or turn = 1 then
-	turn := 1
 
+    if turn = 1 then
 	loop
-	    for i : 1 .. 4
-		played(i) := 0
-	    end for
 	    Input.Pause
 	    chosen := choose
 	    cls
@@ -331,6 +402,7 @@ loop
 		for i : 1 .. 13
 		    if selected (i) = true then
 			playcard (i, 1, played)
+			cardsplayed += 1
 		    end if
 		    selected (i) := false
 		end for
@@ -341,21 +413,34 @@ loop
 	    end if
 	    render
 	end loop
-
-	match += 1
+	
+	if match not = 13 then
+	    match += 1
+	end if
+    elsif turn = 3 then
+	cls
+	put "wtf"
+	exit
     else
-	delay (300)
-
-	ai  % not very smart
-
+	delay (600)
+	ai(turn)  % not very smart
 	cls
 	render
-	turn := turn + 1
     end if
     cls
     render
-    if match = 13 and turn = 5 then
-	exit
+    advance(turn)
+    
+    if isfull(played,4) = true then
+	leader := determine_winner(played(leader))
+	turn := leader
+	for i : 1 .. 4
+	    played(i) := 0
+	end for
+    end if
+
+    if isempty(player(1),1) and isempty(player(2),1) and isempty(player(3),1) and isempty(player(4),1) then
+	    exit
     end if
 end loop
 
